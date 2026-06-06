@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>週五週期進度追蹤器(含每日明細)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 440px;
+            width: 90%;
+            margin: 20px 0;
+        }
+        h1 {
+            color: #1a1a1a;
+            margin: 0 0 20px 0;
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        /* 月曆樣式 */
+        .calendar-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .calendar-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .calendar-btn:hover { background: #e9ecef; }
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            font-weight: 600;
+            color: #909399;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .weekdays div:nth-child(6) { color: #e67e22; } /* 標記週五 */
+        
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        .day {
+            padding: 8px 0;
+            background: #fff;
+            border: 1px solid #eaedf0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+        .day:hover { background: #e8f4ff; border-color: #a3d3ff; }
+        .day.selected {
+            background: #3498db !important;
+            color: white !important;
+            border-color: #2980b9 !important;
+            font-weight: bold;
+        }
+        .day.empty { background: transparent; border: none; cursor: default; }
+        .day-count { font-size: 11px; color: #2ecc71; font-weight: bold; margin-top: 2px; }
+        .day.selected .day-count { color: #fff; }
+
+        /* 狀態顯示與按鈕 */
+        .status-bar {
+            font-size: 15px;
+            background: #e8f4fd;
+            color: #1e88e5;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 0;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn:hover { background-color: #2980b9; }
+
+        /* 數據面板 */
+        .info-panel {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 5px solid #2ecc71;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            text-align: left;
+        }
+        .info-line {
+            font-size: 17px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .target-input {
+            width: 80px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #e74c3c;
+            border: 1px solid #dcdfe6;
+            border-radius: 6px;
+            text-align: center;
+            padding: 4px;
+        }
+        .achieved { color: #2ecc71; font-weight: bold; font-size: 22px; }
+        .remaining { color: #e67e22; font-weight: bold; font-size: 22px; }
+        
+        /* 每日明細清單樣式 */
+        .detail-panel {
+            background-color: #fcfcfc;
+            border: 1px solid #eef1f6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .detail-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #606266;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eed;
+            padding-bottom: 5px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #f0f0f0;
+        }
+        .detail-item:last-child { border-bottom: none; }
+        .detail-date { color: #555; }
+        .detail-value { font-weight: bold; color: #2ecc71; }
+        .detail-value.zero { color: #909399; font-weight: normal; }
+
+        .range-hint { font-size: 12px; color: #909399; margin-top: 5px; }
+        .danger-btn {
+            background-color: #fef0f0; color: #f56c6c; border: 1px solid #fde2e2;
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+        }
+        .danger-btn:hover { background-color: #f56c6c; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>一買即換數量紀錄</h1>
+
+    <div class="calendar-section">
+        <div class="calendar-header">
+            <button class="calendar-btn" onclick="prevMonth()">◀</button>
+            <span id="calendar-title">2026年 06月</span>
+            <button class="calendar-btn" onclick="nextMonth()">▶</button>
+        </div>
+        <div class="weekdays">
+            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+        </div>
+        <div class="days-grid" id="calendar-days"></div>
+    </div>
+
+    <div class="status-bar">
+        📅 已選：<span id="view-date">6月5日</span> ｜ 當天數量：<span id="view-day-count">75</span>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn" onclick="pressAdd(1)">+1</button>
+        <button class="btn" onclick="pressAdd(2)">+2</button>
+        <button class="btn" onclick="pressAdd(3)">+3</button>
+        <button class="btn" onclick="pressAdd(4)">+4</button>
+        <button class="btn" onclick="pressAdd(5)">+5</button>
+    </div>
+
+    <div class="info-panel">
+        <div class="info-line">
+            <span>🎯 7日目標：</span>
+            <input type="number" id="inp-target" class="target-input" oninput="saveTarget(this.value)">
+        </div>
+        <div class="info-line">
+            <span>🏆 7日共達成：</span>
+            <span id="lbl-total" class="achieved">0</span>
+        </div>
+        <div class="info-line">
+            <span>⏳ 距離目標剩餘：</span>
+            <span id="lbl-remaining" class="remaining">0</span>
+        </div>
+    </div>
+
+    <div class="detail-panel">
+        <div class="detail-title">📋 本期每日明細：</div>
+        <div id="detail-list-container"></div>
+        <div class="range-hint" id="lbl-range">計算範圍：--</div>
+    </div>
+
+    <button class="danger-btn" onclick="clearData()">重設所有歷史數據</button>
+</div>
+
+<script>
+    // --- 核心狀態管理 ---
+    let db = JSON.parse(localStorage.getItem('cal_db')) || {};
+    let targetNum = parseInt(localStorage.getItem('cal_target')) || 455;
+
+    const weekdayNames = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+
+    // 預設開局日期初始化 (2026-06-05 為 75)
+    if (Object.keys(db).length === 0) {
+        db["2026-06-05"] = 75;
+        localStorage.setItem('cal_db', JSON.stringify(db));
+    }
+
+    let now = new Date();
+    let viewYear = now.getFullYear();
+    let viewMonth = now.getMonth();
+
+    let activeYear = now.getFullYear();
+    let activeMonth = now.getMonth();
+    let activeDay = now.getDate();
+
+    if(viewYear === 2026 && viewMonth === 5) {
+        activeDay = 5; // 預設停在6月5號
+    }
+
+    // --- 初始化執行 ---
+    document.getElementById('inp-target').value = targetNum;
+    refreshAll();
+
+    function refreshAll() {
+        renderCalendarGrid();
+        updateBottomPanel();
+    }
+
+    function renderCalendarGrid() {
+        document.getElementById('calendar-title').innerText = `${viewYear}年 ${String(viewMonth + 1).padStart(2, '0')}月`;
+        const grid = document.getElementById('calendar-days');
+        grid.innerHTML = '';
+
+        const firstDayIdx = new Date(viewYear, viewMonth, 1).getDay();
+        const totalDays = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+        for (let i = 0; i < firstDayIdx; i++) {
+            let cell = document.createElement('div');
+            cell.className = 'day empty';
+            grid.appendChild(cell);
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            let cell = document.createElement('div');
+            cell.className = 'day';
+            
+            let k = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            let v = db[k] || 0;
+
+            let html = `<span>${d}</span>`;
+            html += v > 0 ? `<span class="day-count">+${v}</span>` : `<span class="day-count">&nbsp;</span>`;
+            cell.innerHTML = html;
+
+            if (viewYear === activeYear && viewMonth === activeMonth && d === activeDay) {
+                cell.classList.add('selected');
+            }
+
+            cell.onclick = (function(y, m, day) {
+                return function() { clickDate(y, m, day); };
+            })(viewYear, viewMonth, d);
+
+            grid.appendChild(cell);
+        }
+    }
+
+    function clickDate(y, m, d) {
+        activeYear = y; activeMonth = m; activeDay = d;
+        refreshAll();
+    }
+
+    // 計算包含選定日期的「週五到下週四」範圍
+    function getFridayToThursdayRange(date) {
+        let current = new Date(date);
+        let dayOfWeek = current.getDay(); 
+        let startFriday = new Date(current);
+        let daysSinceFriday = (dayOfWeek >= 5) ? (dayOfWeek - 5) : (dayOfWeek + 2);
+        
+        startFriday.setDate(current.getDate() - daysSinceFriday);
+        let endThursday = new Date(startFriday);
+        endThursday.setDate(startFriday.getDate() + 6); 
+        
+        return { start: startFriday, end: endThursday };
+    }
+
+    function updateBottomPanel() {
+        // 更新狀態列
+        document.getElementById('view-date').innerText = `${activeMonth + 1}月${activeDay}日`;
+        let activeKey = `${activeYear}-${String(activeMonth+1).padStart(2,'0')}-${String(activeDay).padStart(2,'0')}`;
+        document.getElementById('view-day-count').innerText = db[activeKey] || 0;
+
+        // 計算週期數據與渲染明細
+        let activeDate = new Date(activeYear, activeMonth, activeDay);
+        let range = getFridayToThursdayRange(activeDate);
+
+        let totalSum = 0;
+        let tempDate = new Date(range.start);
+        
+        const listContainer = document.getElementById('detail-list-container');
+        listContainer.innerHTML = ''; // 清空舊列表
+
+        // 循環 7 天：計算總和並當場建立「每日清單」
+        for (let i = 0; i < 7; i++) {
+            let loopKey = `${tempDate.getFullYear()}-${String(tempDate.getMonth()+1).padStart(2,'0')}-${String(tempDate.getDate()).padStart(2,'0')}`;
+            let val = db[loopKey] || 0;
+            totalSum += val;
+
+            // 建立一條明細 DOM
+            let itemDiv = document.createElement('div');
+            itemDiv.className = 'detail-item';
+            
+            let dateStr = `${tempDate.getMonth()+1}月${tempDate.getDate()}日 (${weekdayNames[tempDate.getDay()]})`;
+            let valStr = val > 0 ? `+${val}` : `0`;
+            let valClass = val > 0 ? `detail-value` : `detail-value zero`;
+
+            itemDiv.innerHTML = `
+                <span class="detail-date">${dateStr}</span>
+                <span class="${valClass}">${valStr}</span>
+            `;
+            listContainer.appendChild(itemDiv);
+
+            tempDate.setDate(tempDate.getDate() + 1);
+        }
+
+        // 計算剩餘
+        let remaining = targetNum - totalSum;
+        let remainingStr = remaining <= 0 ? `🎉 已達標！(超標 ${Math.abs(remaining)})` : `${remaining}`;
+        document.getElementById('lbl-remaining').style.color = remaining <= 0 ? "#2ecc71" : "#e67e22";
+
+        // 輸出總數據
+        document.getElementById('lbl-total').innerText = totalSum;
+        document.getElementById('lbl-remaining').innerText = remainingStr;
+        document.getElementById('lbl-range').innerText = 
+            `📅 本期週期：${range.start.getMonth()+1}月${range.start.getDate()}日 至 ${range.end.getMonth()+1}月${range.end.getDate()}日`;
+    }
+
+    function pressAdd(num) {
+        let activeKey = `${activeYear}-${String(activeMonth+1).padStart(2,'0')}-${String(activeDay).padStart(2,'0')}`;
+        db[activeKey] = (db[activeKey] || 0) + num;
+        localStorage.setItem('cal_db', JSON.stringify(db));
+        refreshAll();
+    }
+
+    function saveTarget(val) {
+        targetNum = parseInt(val) || 0;
+        localStorage.setItem('cal_target', targetNum);
+        updateBottomPanel();
+    }
+
+    function prevMonth() { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } refreshAll(); }
+    function nextMonth() { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } refreshAll(); }
+
+    function clearData() {
+        if (confirm("確定要清除所有日期的歷史數據嗎？")) {
+            db = {"2026-06-05": 75};
+            localStorage.setItem('cal_db', JSON.stringify(db));
+            let d = new Date();
+            activeYear = d.getFullYear(); activeMonth = d.getMonth(); activeDay = d.getDate();
+            if(activeYear === 2026 && activeMonth === 5) activeDay = 5;
+            viewYear = activeYear; viewMonth = activeMonth;
+            refreshAll();
+        }
+    }
+</script>
+
+</body>
+</html>
